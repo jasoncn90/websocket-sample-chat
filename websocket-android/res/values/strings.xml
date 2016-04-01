@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+	<string name="app_name">ws-client</string>
+	<string name="click_to_send">click to send</string>
+	<string name="say_something">say something</string>
+</resources>
