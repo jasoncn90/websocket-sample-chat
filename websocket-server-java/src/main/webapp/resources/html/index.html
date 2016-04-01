@@ -1,0 +1,53 @@
+<html>
+<head>
+<script type="text/javascript">
+	WEB_SOCKET_FORCE_FLASH = true
+	WEB_SOCKET_SWF_LOCATION = "resources/other/WebSocketMain.swf"
+</script>
+<script type="text/javascript" src="resources/js/swfobject.js"></script>
+<script type="text/javascript" src="resources/js/web_socket.js"></script>
+<script type="text/javascript" src="resources/js/jquery-2.2.2.min.js"></script>
+<script type="text/javascript">
+	var ws;
+	var ws_ready;
+	function connectSocket() {
+		$("#chat").text("");
+		ws = new WebSocket('ws://108.207.6.4:9003')
+		ws.onopen = function() {
+			console.log('connected')
+			ws_ready = true;
+		}
+		ws.onmessage = function(e) {
+			console.log('message', e.data);
+			addToChat(e.data);
+		}
+		ws.onclose = function() {
+			console.log('close')
+			ws_ready = false;
+			alert("web socket closed");
+		}
+	}
+	function send() {
+		if (ws_ready) {
+			var content = "web : " + $("#content").val();
+			ws.send(content);
+			addToChat(content);
+			$("#content").val("");
+		} else {
+			alert("web socket not connected!");
+		}
+	}
+	function addToChat(message) {
+		$("#chat").append(message + "\n");
+	}
+</script>
+</head>
+<body onload="connectSocket()">
+	<textarea id='chat' style="width: 300px; height: 400px;"> </textarea>
+	<br />
+	<form onsubmit="send()" action="#">
+		<input type="text" value="" id="content" placeholder="say something"/> <input type="submit"
+			value=" send " />
+	</form>
+</body>
+</html>
