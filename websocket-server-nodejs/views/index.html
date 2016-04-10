@@ -1,0 +1,59 @@
+<html>
+
+<head>
+    <script type="text/javascript" src="/js/jquery-2.2.2.min.js"></script>
+    <script type="text/javascript">
+        var ws;
+        var ws_ready;
+        var name;
+        var ticket='test';
+        function connectSocket() {
+            name = window.prompt("Please enter your name", "");
+            if(name==null||name=='null'||name==''){
+                connectSocket();
+                return;
+            }
+            $("#chat").text("");
+            var host = window.document.location.host.replace(/:.*/, '');
+            ws = new WebSocket('ws://' + host + ':9003'+'?ticket='+ticket+'&name='+name);
+            ws.onopen = function() {
+                console.log('connected')
+                ws_ready = true;
+            }
+            ws.onmessage = function(e) {
+                console.log('message', e.data);
+                addToChat(e.data);
+            }
+            ws.onclose = function(closeObj) {
+                ws_ready = false;
+                alert('web socket closed .code -> '+closeObj.code +' reason -> '+closeObj.reason);
+                //if name exist,reinput the name
+                if(closeObj.code=='3001'){
+                    connectSocket();
+                }
+            }
+        }
+        function send() {
+            if (ws_ready) {
+                var content = name + ": " + $("#content").val();
+                ws.send($("#content").val());
+                addToChat(content);
+                $("#content").val("");
+            } else {
+                alert("web socket not connected!");
+            }
+        }
+        function addToChat(message) {
+            $("#chat").append(message + "\n");
+        }
+    </script>
+</head>
+
+<body onload="connectSocket()">
+    <textarea id='chat' style="width: 300px; height: 400px;"> </textarea>
+    <br />
+    <input type="text" value="" id="content" placeholder="say something" />
+    <input type="button" value=" send " onclick="send()" />
+</body>
+
+</html>

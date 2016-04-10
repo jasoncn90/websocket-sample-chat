@@ -1,0 +1,10 @@
+{
+  "name": "websocket-server-nodejs",
+  "version": "1.0.0",
+  "description": "websocket server node express test project",
+  "private": true,
+  "dependencies": {
+    "express": "*",
+    "ws": "*"
+  }
+}
