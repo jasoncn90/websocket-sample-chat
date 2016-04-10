@@ -3,11 +3,11 @@
 var server = require('http').createServer();
 var express = require('express');
 var app = express();    //main app
-var chat = express();   //sub app for chat
 var port = 8080;
 
 app.use(express.static(__dirname + '/public'));
 
+//sub app for chat
 var chat = require('./routes/chat');
 app.use('/chat', chat);
 
