@@ -3,9 +3,9 @@ package com.ws.server.socket;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.java_websocket.WebSocket;
 import org.java_websocket.drafts.Draft;
@@ -19,8 +19,11 @@ import org.springframework.beans.factory.InitializingBean;
 public class SocketServer extends WebSocketServer implements InitializingBean {
 
 	public static final int PORT = 9003;
+	public static final String TICKET = "test";
 	private volatile static SocketServer instance;
-	private List<WebSocket> conns = new ArrayList<WebSocket>();
+
+	// remember client names
+	private Map<WebSocket, String> names = new HashMap<WebSocket, String>();
 
 	private SocketServer() throws UnknownHostException {
 	}
@@ -35,15 +38,46 @@ public class SocketServer extends WebSocketServer implements InitializingBean {
 
 	@Override
 	public void onOpen(WebSocket conn, ClientHandshake handshake) {
-		conns.add(conn);
-		System.out.println("connection -> " + conn.hashCode() + " connected");
-		System.out.println("opened connection number -> " + conns.size());
+		// check the ticket and name
+		// cannot get url params through another way using this library...
+		String[] params = handshake.getResourceDescriptor()
+				.substring(handshake.getResourceDescriptor().indexOf('?') + 1).split("&");
+		String ticket = null;
+		String name = null;
+		for (String param : params) {
+			if (param.startsWith("ticket")) {
+				ticket = param.substring(param.indexOf('=') + 1);
+			}
+			if (param.startsWith("name")) {
+				name = param.substring(param.indexOf('=') + 1);
+			}
+		}
+		if (ticket == null || !ticket.equals(TICKET)) {
+			conn.close(3000, "auth failed");
+			return;
+		}
+		if (name == null || name.equals("")) {
+			conn.close(3002, "please input your name!");
+			return;
+		}
+		if (names.values().contains(name)) {
+			conn.close(3001, "name " + name + " already exist!");
+			return;
+		}
+		// tell clients who join the chat
+		for (WebSocket socket : connections()) {
+			socket.send(name + " joined the chat.");
+		}
+		names.put(conn, name);
 	}
 
 	@Override
 	public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-		conns.remove(conn);
-		System.out.println("connection -> " + conn.hashCode() + " closed");
+		// tell clients who left the chat
+		for (WebSocket socket : connections()) {
+			socket.send(names.get(conn) + " left the chat.");
+		}
+		names.remove(conn);
 	}
 
 	@Override
@@ -54,19 +88,19 @@ public class SocketServer extends WebSocketServer implements InitializingBean {
 
 	@Override
 	public void onMessage(WebSocket conn, String message) {
-		System.out.println("message from " + conn.hashCode() + " -> " + message);
-		for (WebSocket socket : conns) {
+		System.out.println("message from " + names.get(conn) + " -> " + message);
+		for (WebSocket socket : connections()) {
 			if (socket == conn) {
 				continue;
 			}
-			socket.send(message);
+			socket.send(names.get(conn) + ": " + message);
 		}
 	}
 
 	@Override
 	public void onMessage(WebSocket conn, ByteBuffer blob) {
-		System.out.println("byteBuffer -> " + blob);
-		conn.send(blob);
+		// System.out.println("byteBuffer -> " + blob);
+		// conn.send(blob);
 	}
 
 	@Override

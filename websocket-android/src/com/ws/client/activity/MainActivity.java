@@ -11,8 +11,12 @@ import com.ws.client.socket.OnSocketStatusChangeListener;
 import com.ws.client.socket.SocketClient;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.text.InputType;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -27,6 +31,7 @@ public class MainActivity extends Activity {
 
 	static final String SERVER_URL = "108.207.6.4";
 	static final String SERVER_PORT = "9003";
+	static final String TICKET = "test";
 
 	Button send;
 	EditText content;
@@ -34,14 +39,20 @@ public class MainActivity extends Activity {
 	ScrollView scroll;
 	LinearLayout chatLayout;
 	boolean connected = false;
+	String name;
+	AlertDialog dialog;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		initUI();
-		// create a socket client and connect
-		client = new SocketClient(URI.create("ws://" + SERVER_URL + ":" + SERVER_PORT), new Draft_17());
+	}
+
+	// create a socket client and connect
+	private void connect() {
+		String url = "ws://" + SERVER_URL + ":" + SERVER_PORT + "?ticket=" + TICKET + "&name=" + name;
+		client = new SocketClient(URI.create(url), new Draft_17());
 		client.setListener(listener);
 		client.connect();
 	}
@@ -57,15 +68,41 @@ public class MainActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				if (connected) {
-					String message = "android : " + content.getText().toString();
-					client.send(message);
+					String message = name + ": " + content.getText().toString();
 					addToChat(message);
+					client.send(content.getText().toString());
 					content.setText("");
 				} else {
 					toast("socket not connected!");
 				}
 			}
 		});
+		setName();
+	}
+
+	// setup the client name
+	private void setName() {
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setTitle("Title");
+		final EditText input = new EditText(this);
+		input.setInputType(InputType.TYPE_CLASS_TEXT);
+		builder.setView(input);
+		builder.setTitle("Please enter your name");
+		builder.setCancelable(false);
+		builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				name = input.getText().toString();
+				if (TextUtils.isEmpty(name)) {
+					dialog.dismiss();
+					setName();
+					return;
+				}
+				connect();
+			}
+		});
+		dialog = builder.create();
+		dialog.show();
 	}
 
 	// init the listener
@@ -97,6 +134,15 @@ public class MainActivity extends Activity {
 		public void onClose(final int code, final String reason, boolean remote) {
 			connected = false;
 			toast("socket closed, code -> " + code + " reason -> " + reason);
+			if (code == 3001) {
+				runOnUiThread(new Runnable() {
+
+					@Override
+					public void run() {
+						setName();
+					}
+				});
+			}
 		}
 
 		@Override
@@ -126,7 +172,9 @@ public class MainActivity extends Activity {
 	@Override
 	protected void onDestroy() {
 		// close the client when exit
-		client.close();
+		if (client != null) {
+			client.close();
+		}
 		super.onDestroy();
 	}
 
